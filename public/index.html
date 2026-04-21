@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>QR Bridge Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e8e8ee;padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:#185FA5;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-text{font-size:17px;font-weight:600;color:#1a1a2e}
+.logo-sub{font-size:11px;color:#888;margin-top:1px}
+.new-btn{background:#185FA5;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px}
+.new-btn:hover{background:#0C447C}
+.container{max-width:900px;margin:0 auto;padding:2rem}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:2rem}
+.stat{background:#fff;border-radius:10px;padding:1.1rem 1.25rem;border:1px solid #e8e8ee}
+.stat-label{font-size:12px;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:26px;font-weight:600;color:#1a1a2e}
+.stat-sub{font-size:12px;color:#aaa;margin-top:3px}
+.section-title{font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.qr-list{display:grid;gap:12px}
+.qr-card{background:#fff;border-radius:12px;border:1px solid #e8e8ee;padding:1.1rem 1.25rem;display:grid;grid-template-columns:72px 1fr auto;gap:1rem;align-items:center}
+.qr-canvas-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.qr-canvas{border-radius:6px;overflow:hidden;width:64px;height:64px}
+.dl-link{font-size:11px;color:#185FA5;cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;font-family:inherit}
+.qr-name{font-size:15px;font-weight:600;color:#1a1a2e;margin-bottom:2px}
+.qr-bridge{font-size:12px;color:#185FA5;margin-bottom:4px;word-break:break-all}
+.qr-dest{font-size:12px;color:#666;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.b-green{background:#EAF3DE;color:#3B6D11}
+.b-gray{background:#f0f0f0;color:#666}
+.b-blue{background:#E6F1FB;color:#185FA5}
+.actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.act{font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;white-space:nowrap;font-family:inherit}
+.act:hover{background:#f5f5f5}
+.act.danger{color:#c0392b;border-color:#f5c0bb}
+.act.danger:hover{background:#fff5f5}
+.empty{text-align:center;padding:3rem;color:#aaa;font-size:14px;background:#fff;border-radius:12px;border:1px solid #e8e8ee}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:14px;padding:1.75rem;width:440px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal h3{font-size:17px;font-weight:600;margin-bottom:1.25rem;color:#1a1a2e}
+.field{margin-bottom:13px}
+.field label{font-size:13px;color:#555;display:block;margin-bottom:5px;font-weight:500}
+.field input{width:100%;font-size:14px;padding:9px 11px;border-radius:8px;border:1px solid #ddd;color:#1a1a2e;outline:none;font-family:inherit}
+.field input:focus{border-color:#185FA5;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+.field input[readonly]{background:#f7f7f7;color:#888}
+.field .hint{font-size:11px;color:#aaa;margin-top:4px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+.cancel{background:#fff;border:1px solid #ddd;border-radius:8px;padding:9px 18px;font-size:14px;cursor:pointer;font-family:inherit}
+.save{background:#185FA5;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.save:hover{background:#0C447C}
+.loading{text-align:center;padding:3rem;color:#aaa}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a2e;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.toast.show{opacity:1}
+.scan-bar{height:4px;background:#eee;border-radius:2px;width:90px;margin-top:5px}
+.scan-fill{height:100%;border-radius:2px;background:#185FA5;transition:width .4s}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="white" fill-opacity=".9"/><rect x="10" y="2" width="6" height="6" rx="1" fill="white" fill-opacity=".9"/><rect x="2" y="10" width="6" height="6" rx="1" fill="white" fill-opacity=".9"/><rect x="11" y="11" width="2" height="2" rx=".5" fill="white"/><rect x="14" y="11" width="2" height="2" rx=".5" fill="white"/><rect x="11" y="14" width="2" height="2" rx=".5" fill="white"/><rect x="14" y="14" width="2" height="2" rx=".5" fill="white"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">QR Bridge</div>
+      <div class="logo-sub">Dynamic QR code manager</div>
+    </div>
+  </div>
+  <button class="new-btn" onclick="showCreate()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+    New QR code
+  </button>
+</div>
+
+<div class="container">
+  <div class="stats-row" id="statsRow">
+    <div class="stat"><div class="stat-label">Total QR codes</div><div class="stat-val" id="s-total">–</div></div>
+    <div class="stat"><div class="stat-label">Total scans</div><div class="stat-val" id="s-scans">–</div></div>
+    <div class="stat"><div class="stat-label">Active codes</div><div class="stat-val" id="s-active">–</div></div>
+  </div>
+  <div class="section-title">Your QR codes</div>
+  <div class="qr-list" id="qrList"><div class="loading">Loading your QR codes…</div></div>
+</div>
+
+<div id="modalArea"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+let codes = [];
+const BASE_URL = window.location.origin;
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+async function loadCodes() {
+  try {
+    const res = await fetch("/api/codes");
+    codes = await res.json();
+    renderAll();
+  } catch(e) {
+    document.getElementById("qrList").innerHTML = '<div class="empty">Could not load QR codes. Check your Airtable settings in server.js.</div>';
+  }
+}
+
+function renderStats() {
+  document.getElementById("s-total").textContent = codes.length;
+  document.getElementById("s-scans").textContent = codes.reduce((a,c)=>a+c.scans,0).toLocaleString();
+  document.getElementById("s-active").textContent = codes.filter(c=>c.active).length;
+}
+
+function renderList() {
+  const list = document.getElementById("qrList");
+  if (!codes.length) { list.innerHTML = '<div class="empty">No QR codes yet. Click "New QR code" to create your first one.</div>'; return; }
+  const maxScans = Math.max(...codes.map(c=>c.scans), 1);
+  list.innerHTML = codes.map(c => {
+    const bridgeUrl = `${BASE_URL}/r/${c.slug}`;
+    return `<div class="qr-card">
+      <div class="qr-canvas-wrap">
+        <div class="qr-canvas" id="qrc-${c.id}"></div>
+        <button class="dl-link" onclick="downloadQR('${c.id}','${c.name.replace(/'/g,"\\'")}')">Download</button>
+      </div>
+      <div>
+        <div class="qr-name">${c.name}</div>
+        <div class="qr-bridge">${bridgeUrl}</div>
+        <div class="qr-dest">→ ${c.destination}</div>
+        <div class="badges">
+          <span class="badge ${c.active?'b-green':'b-gray'}">${c.active?'Active':'Paused'}</span>
+          <span class="badge b-blue">${c.scans.toLocaleString()} scans</span>
+        </div>
+        <div class="scan-bar"><div class="scan-fill" style="width:${Math.round(c.scans/maxScans*100)}%"></div></div>
+      </div>
+      <div class="actions">
+        <button class="act" onclick="showEdit('${c.id}')">Edit URL</button>
+        <button class="act" onclick="toggleActive('${c.id}')">${c.active?'Pause':'Activate'}</button>
+        <button class="act" onclick="copyLink('${c.slug}')">Copy link</button>
+        <button class="act danger" onclick="deleteCode('${c.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+  codes.forEach(c => makeQR(c.id, `${BASE_URL}/r/${c.slug}`, 64));
+}
+
+function renderAll() { renderStats(); renderList(); }
+
+function makeQR(id, url, size) {
+  setTimeout(() => {
+    const el = document.getElementById("qrc-"+id);
+    if (!el || el.dataset.done) return;
+    el.dataset.done = "1";
+    try { new QRCode(el, { text: url, width: size, height: size, correctLevel: QRCode.CorrectLevel.M }); } catch(e) {}
+  }, 80);
+}
+
+function downloadQR(id, name) {
+  const el = document.getElementById("qrc-"+id);
+  const canvas = el && el.querySelector("canvas");
+  if (!canvas) { toast("QR still loading, try again"); return; }
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = name.replace(/\s+/g,"_") + "_QR.png";
+  a.click();
+}
+
+function copyLink(slug) {
+  const url = `${BASE_URL}/r/${slug}`;
+  navigator.clipboard.writeText(url).then(() => toast("Bridge link copied!"));
+}
+
+function showCreate() {
+  document.getElementById("modalArea").innerHTML = `
+    <div class="modal-bg" onclick="closeModal(event)">
+      <div class="modal">
+        <h3>Create new QR code</h3>
+        <div class="field"><label>Name (internal label)</label><input id="cf-name" placeholder="e.g. Restaurant Menu" /></div>
+        <div class="field"><label>Slug (short ID for the link)</label><input id="cf-slug" placeholder="e.g. menu-2025" /><div class="hint">Your bridge link will be: ${BASE_URL}/r/<strong>your-slug</strong></div></div>
+        <div class="field"><label>Destination URL</label><input id="cf-dest" placeholder="https://yourwebsite.com/menu.pdf" /></div>
+        <div class="modal-actions">
+          <button class="cancel" onclick="closeModalDirect()">Cancel</button>
+          <button class="save" onclick="createCode()">Create QR code</button>
+        </div>
+      </div>
+    </div>`;
+  const nameEl = document.getElementById("cf-name");
+  const slugEl = document.getElementById("cf-slug");
+  nameEl.addEventListener("input", e => { if (!slugEl.dataset.touched) slugEl.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""); });
+  slugEl.addEventListener("input", () => { slugEl.dataset.touched = "1"; });
+}
+
+async function createCode() {
+  const name = document.getElementById("cf-name").value.trim();
+  const slug = document.getElementById("cf-slug").value.trim();
+  const destination = document.getElementById("cf-dest").value.trim();
+  if (!name || !slug || !destination) { toast("Please fill in all fields"); return; }
+  try {
+    const res = await fetch("/api/codes", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({name,slug,destination}) });
+    if (res.status === 409) { toast("That slug is already taken"); return; }
+    const code = await res.json();
+    codes.unshift(code);
+    closeModalDirect();
+    renderAll();
+    toast("QR code created!");
+  } catch(e) { toast("Error creating QR code"); }
+}
+
+function showEdit(id) {
+  const c = codes.find(x=>x.id===id);
+  const bridgeUrl = `${BASE_URL}/r/${c.slug}`;
+  document.getElementById("modalArea").innerHTML = `
+    <div class="modal-bg" onclick="closeModal(event)">
+      <div class="modal">
+        <h3>Edit — ${c.name}</h3>
+        <div class="field"><label>Bridge link (fixed — this is what's on your QR code)</label><input value="${bridgeUrl}" readonly /><div class="hint">This never changes. You only update where it sends people.</div></div>
+        <div class="field"><label>New destination URL</label><input id="ef-dest" value="${c.destination}" /></div>
+        <div class="modal-actions">
+          <button class="cancel" onclick="closeModalDirect()">Cancel</button>
+          <button class="save" onclick="saveEdit('${id}')">Save changes</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveEdit(id) {
+  const destination = document.getElementById("ef-dest").value.trim();
+  if (!destination) { toast("Please enter a destination URL"); return; }
+  try {
+    await fetch(`/api/codes/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({destination}) });
+    const c = codes.find(x=>x.id===id);
+    c.destination = destination;
+    closeModalDirect();
+    renderAll();
+    toast("Destination updated!");
+  } catch(e) { toast("Error saving"); }
+}
+
+async function toggleActive(id) {
+  const c = codes.find(x=>x.id===id);
+  const active = !c.active;
+  try {
+    await fetch(`/api/codes/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({active}) });
+    c.active = active;
+    renderAll();
+    toast(active ? "QR code activated" : "QR code paused");
+  } catch(e) { toast("Error updating"); }
+}
+
+async function deleteCode(id) {
+  const c = codes.find(x=>x.id===id);
+  if (!confirm(`Delete "${c.name}"? The bridge link will stop working.`)) return;
+  try {
+    await fetch(`/api/codes/${id}`, { method:"DELETE" });
+    codes = codes.filter(x=>x.id!==id);
+    renderAll();
+    toast("QR code deleted");
+  } catch(e) { toast("Error deleting"); }
+}
+
+function closeModal(e) { if (e.target === e.currentTarget) closeModalDirect(); }
+function closeModalDirect() { document.getElementById("modalArea").innerHTML = ""; }
+
+loadCodes();
+</script>
+</body>
+</html>
